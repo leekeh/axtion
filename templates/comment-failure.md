@@ -4,4 +4,4 @@
 
 The following routes have violations:
 {{affected_routes}}
-{{report_url_section}}{{timed_out_section}}
+{{timed_out_section}}
