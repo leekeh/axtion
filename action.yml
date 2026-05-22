@@ -93,8 +93,8 @@ outputs:
     description: "'true' if accessibility violations were found"
     value: ${{ steps.run-tests.outcome == 'failure' && 'true' || 'false' }}
   report-url:
-    description: "URL to the Actions run where artifacts are available (empty if generate-report is false or tests passed)"
-    value: ${{ steps.upload-reports.outputs.run-url }}
+    description: "URL to the uploaded report, viewable directly in the browser (empty if generate-report is false or tests passed)"
+    value: ${{ steps.upload-report.outputs.artifact-url }}
 
 runs:
   using: "composite"
@@ -202,17 +202,24 @@ runs:
           echo "has-reports=false" >> "$GITHUB_OUTPUT"
         fi
 
-    - name: Upload reports
-      id: upload-reports
+    - name: Generate report
+      id: create-index
       if: steps.check-reports.outputs.has-reports == 'true'
       shell: bash
       env:
         REPORT_DIR: ${{ github.workspace }}/a11y-reports
-        ARTIFACT_URLS_FILE: ${{ runner.temp }}/a11y-artifact-urls.json
+        INDEX_FILE: ${{ runner.temp }}/a11y-report-index.html
       run: |
-        node --experimental-strip-types "${{ github.action_path }}/runner/print-header.ts" "📤  Uploading reports"
-        node --experimental-strip-types "${{ github.action_path }}/runner/upload-reports.ts"
-        echo "artifact-urls-file=${ARTIFACT_URLS_FILE}" >> "$GITHUB_OUTPUT"
+        node --experimental-strip-types "${{ github.action_path }}/runner/print-header.ts" "📄  Generating report"
+        node --experimental-strip-types "${{ github.action_path }}/runner/create-index.ts"
+
+    - name: Upload report
+      id: upload-report
+      if: steps.check-reports.outputs.has-reports == 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        archive: false
+        path: ${{ runner.temp }}/a11y-report-index.html
 
     - name: Post PR comment
       if: inputs.post-comment == 'true' && github.event_name == 'pull_request'
@@ -221,8 +228,7 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
         A11Y_OUTCOME: ${{ steps.run-tests.outcome }}
-        REPORT_URL: ${{ steps.upload-reports.outputs.run-url }}
-        ARTIFACT_URLS_FILE: ${{ steps.upload-reports.outputs.artifact-urls-file }}
+        REPORT_URL: ${{ steps.upload-report.outputs.artifact-url }}
         REPORT_DIR: ${{ github.workspace }}/a11y-reports
         RESULTS_FILE: ${{ runner.temp }}/a11y-results.json
         CUSTOM_TEMPLATE_SUCCESS: ${{ inputs.comment-template-success }}

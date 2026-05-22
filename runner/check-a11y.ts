@@ -58,6 +58,10 @@ export async function checkA11y(page: Page, testName: string): Promise<void> {
       `${reportDir}/${safeName}.meta.json`,
       JSON.stringify({ name: testName, url: page.url() }),
     );
+    writeFileSync(
+      `${reportDir}/${safeName}.violations.json`,
+      JSON.stringify(results.violations),
+    );
   }
 
   expect(results.violations).toEqual([]);

@@ -7,7 +7,6 @@ import path from "node:path";
 const [owner, repo] = (process.env.GITHUB_REPOSITORY ?? "/").split("/");
 const reportDir = process.env.REPORT_DIR!;
 const reportUrl = process.env.REPORT_URL;
-const artifactUrlsFile = process.env.ARTIFACT_URLS_FILE;
 const resultsFile = process.env.RESULTS_FILE;
 const customSuccess = process.env.CUSTOM_TEMPLATE_SUCCESS;
 const customFailure = process.env.CUSTOM_TEMPLATE_FAILURE;
@@ -118,17 +117,6 @@ function listInvalidRoutes(): string {
   try {
     const files = readdirSync(reportDir).filter((f) => f.endsWith(".html"));
     if (!files.length) return "_No violation reports found._";
-
-    const urlMap: Record<string, string> = {};
-    if (artifactUrlsFile && existsSync(artifactUrlsFile)) {
-      try {
-        Object.assign(
-          urlMap,
-          JSON.parse(readFileSync(artifactUrlsFile, "utf-8")),
-        );
-      } catch {}
-    }
-
     return files
       .map((f) => {
         const base = f.replace(/\.html$/, "");
@@ -139,8 +127,9 @@ function listInvalidRoutes(): string {
           );
           if (meta.name) displayName = meta.name;
         } catch {}
-        const url = urlMap[f];
-        return url ? `- [${displayName}](${url})` : `- ${displayName}`;
+        return reportUrl
+          ? `- [${displayName}](${reportUrl}#${base})`
+          : `- ${displayName}`;
       })
       .join("\n");
   } catch {
