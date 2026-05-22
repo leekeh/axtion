@@ -1,0 +1,231 @@
+name: "Accessibility Check"
+description: "Run axe-core accessibility tests (WCAG 2.1 AA) against a running web app and post results as a PR comment."
+
+inputs:
+  # ── Routing ──────────────────────────────────────────────────────────────────
+  base-url:
+    description: "Base URL of the running app (e.g. http://localhost:3000)"
+    required: true
+
+  routes:
+    description: |
+      JSON array of routes to test. Each item can be a plain string or a route object:
+        ["/", "/about", { "path": "/dashboard", "name": "Dashboard", "readiness": { "type": "selector", "selector": "#app" } }]
+      Mutually exclusive with routes-file.
+
+  routes-file:
+    description: |
+      Path to a JSON routes file. Accepts the same JSON array format as the routes input.
+      Mutually exclusive with routes.
+
+  # ── Test execution ────────────────────────────────────────────────────────────
+  browser:
+    description: "Browser to use. One of: chromium, firefox, webkit"
+    default: "chromium"
+
+  workers:
+    description: "Number of parallel Playwright workers"
+    default: "2"
+
+  wait-strategy:
+    description: |
+      Default page readiness strategy applied to all routes unless overridden per-route.
+      - networkidle: wait until no network requests for 500ms (good default for most apps)
+      - load: wait for the load event
+      - domcontentloaded: wait for DOMContentLoaded
+    default: "networkidle"
+
+  exclusions:
+    description: 'JSON array of CSS selectors to exclude from axe scans. E.g. ''["iframe", ".ads"]'''
+    default: "[]"
+
+  # ── Rule filtering ────────────────────────────────────────────────────────────
+  rules:
+    description: |
+      JSON array of axe-core rule IDs to run exclusively.
+      When set, only the listed rules are enabled and all others are skipped.
+      See https://github.com/dequelabs/axe-core/blob/develop/doc/rule-descriptions.md for the full list.
+      E.g. '["color-contrast", "image-alt"]'
+
+  rulesets:
+    description: |
+      JSON array of axe-core tag strings (rulesets) to run.
+      When set, only rules matching at least one tag are enabled.
+      Common values: "wcag2a", "wcag2aa", "wcag2aaa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice".
+      See https://www.deque.com/axe/core-documentation/api-documentation/#axecore-tags for all tags.
+      E.g. '["wcag2aa", "wcag21aa"]'
+
+  disabled-rules:
+    description: |
+      JSON array of axe-core rule IDs to disable.
+      Use this to suppress specific rules while keeping everything else active.
+      See https://github.com/dequelabs/axe-core/blob/develop/doc/rule-descriptions.md for IDs.
+      E.g. '["color-contrast"]'
+
+  # ── Reporting ─────────────────────────────────────────────────────────────────
+  generate-report:
+    description: "Generate HTML reports for violations and upload as GitHub Actions artifacts"
+    default: "true"
+
+  post-comment:
+    description: "Post (or update) a PR comment with test results. Only runs on pull_request events."
+    default: "true"
+
+  github-token:
+    description: |
+      GitHub token for posting PR comments. Requires issues: write (PR comments use the Issues API).
+      Defaults to the workflow token.
+    default: ${{ github.token }}
+
+  comment-template-success:
+    description: |
+      Path to a custom Mustache-style template (.md) for the success comment.
+      Available variables: {{repo}}, {{pr_number}}, {{status}}
+
+  comment-template-failure:
+    description: |
+      Path to a custom Mustache-style template (.md) for the failure comment.
+      Available variables: {{repo}}, {{pr_number}}, {{status}}, {{report_url}},
+        {{affected_routes}}, {{report_url_section}}, {{timed_out_section}}
+
+outputs:
+  violations-found:
+    description: "'true' if accessibility violations were found"
+    value: ${{ steps.run-tests.outcome == 'failure' && 'true' || 'false' }}
+  report-url:
+    description: "URL to the uploaded artifact (empty if generate-report is false or tests passed)"
+    value: ${{ steps.upload-report.outputs.artifact-url }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      with:
+        node-version: "24"
+
+    - name: Set up pnpm
+      uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+
+    - name: Install dependencies
+      shell: bash
+      env:
+        A11Y_BROWSER: ${{ inputs.browser }}
+      run: |
+        node --experimental-strip-types "${{ github.action_path }}/runner/print-header.ts" "📦  Installing dependencies"
+        pnpm install --frozen-lockfile --dir "${{ github.action_path }}/runner"
+        BROWSER="$A11Y_BROWSER"
+        case "$BROWSER" in
+          chromium|firefox|webkit) ;;
+          *) echo "::error::Invalid browser '${BROWSER}'. Must be chromium, firefox, or webkit."; exit 1 ;;
+        esac
+        pnpm --dir "${{ github.action_path }}/runner" exec playwright install "$BROWSER"
+
+    - name: Prepare configuration
+      id: prepare-routes
+      shell: bash
+      env:
+        ROUTES_INPUT: ${{ inputs.routes }}
+        ROUTES_FILE_INPUT: ${{ inputs.routes-file }}
+        BASE_URL: ${{ inputs.base-url }}
+        A11Y_BROWSER: ${{ inputs.browser }}
+        A11Y_WORKERS: ${{ inputs.workers }}
+        A11Y_WAIT_STRATEGY: ${{ inputs.wait-strategy }}
+        A11Y_RULES: ${{ inputs.rules }}
+        A11Y_RULESETS: ${{ inputs.rulesets }}
+        A11Y_DISABLED_RULES: ${{ inputs.disabled-rules }}
+        A11Y_EXCLUSIONS: ${{ inputs.exclusions }}
+      run: |
+        node --experimental-strip-types "${{ github.action_path }}/runner/print-header.ts" "⚙️  Preparing configuration"
+
+        MANIFEST_PATH="${RUNNER_TEMP}/a11y-routes.json"
+        echo "manifest-path=${MANIFEST_PATH}" >> "$GITHUB_OUTPUT"
+
+        if [ -n "${ROUTES_FILE_INPUT}" ]; then
+          # Guard against path traversal: reject paths that escape GITHUB_WORKSPACE
+          ROUTES_FILE_REAL="$(realpath -m "${ROUTES_FILE_INPUT}")"
+          WORKSPACE_REAL="$(realpath "${GITHUB_WORKSPACE}")"
+          if [[ "${ROUTES_FILE_REAL}" != "${WORKSPACE_REAL}" && "${ROUTES_FILE_REAL}" != "${WORKSPACE_REAL}/"* ]]; then
+            echo "::error::routes-file '${ROUTES_FILE_INPUT}' must be a path within GITHUB_WORKSPACE."
+            exit 1
+          fi
+          cp "${ROUTES_FILE_INPUT}" "${MANIFEST_PATH}"
+        elif [ -n "${ROUTES_INPUT}" ]; then
+          printf '%s' "${ROUTES_INPUT}" > "${MANIFEST_PATH}"
+        else
+          echo "::error::Either the 'routes' or 'routes-file' input is required."
+          exit 1
+        fi
+
+        MANIFEST_PATH="$MANIFEST_PATH" node --experimental-strip-types "${{ github.action_path }}/runner/print-config.ts"
+        node --experimental-strip-types "${{ github.action_path }}/runner/print-resolved-rules.ts"
+
+    - name: Run tests
+      id: run-tests
+      shell: bash
+      continue-on-error: true
+      env:
+        BASE_URL: ${{ inputs.base-url }}
+        ROUTES_FILE: ${{ steps.prepare-routes.outputs.manifest-path }}
+        A11Y_BROWSER: ${{ inputs.browser }}
+        A11Y_WORKERS: ${{ inputs.workers }}
+        A11Y_EXCLUSIONS: ${{ inputs.exclusions }}
+        A11Y_WAIT_STRATEGY: ${{ inputs.wait-strategy }}
+        A11Y_GENERATE_REPORT: ${{ inputs.generate-report }}
+        A11Y_RULES: ${{ inputs.rules }}
+        A11Y_RULESETS: ${{ inputs.rulesets }}
+        A11Y_DISABLED_RULES: ${{ inputs.disabled-rules }}
+        A11Y_REPORT_DIR: a11y-reports
+        A11Y_RESULTS_FILE: ${{ runner.temp }}/a11y-results.json
+      run: |
+        node --experimental-strip-types "${{ github.action_path }}/runner/print-header.ts" "🧪  Running tests"
+        cd "$GITHUB_WORKSPACE"
+        "${{ github.action_path }}/runner/node_modules/.bin/playwright" test \
+          --config="${{ github.action_path }}/runner/playwright.config.ts"
+        PLAYWRIGHT_EXIT=$?
+
+        node --experimental-strip-types "${{ github.action_path }}/runner/print-header.ts" "📊  Results"
+        A11Y_PLAYWRIGHT_EXIT="$PLAYWRIGHT_EXIT" node --experimental-strip-types "${{ github.action_path }}/runner/print-results.ts"
+        exit "$PLAYWRIGHT_EXIT"
+
+    - name: Check for report files
+      id: check-reports
+      if: steps.run-tests.outcome == 'failure' && inputs.generate-report == 'true'
+      shell: bash
+      env:
+        REPORT_DIR: ${{ github.workspace }}/a11y-reports
+      run: |
+        node --experimental-strip-types "${{ github.action_path }}/runner/print-header.ts" "📊  Creating output"
+        if [ -d "$REPORT_DIR" ] && [ -n "$(ls -A "$REPORT_DIR" 2>/dev/null)" ]; then
+          echo "has-reports=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "has-reports=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Upload report
+      id: upload-report
+      if: steps.check-reports.outputs.has-reports == 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: a11y-report
+        path: ${{ github.workspace }}/a11y-reports
+
+    - name: Post PR comment
+      if: inputs.post-comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+        A11Y_OUTCOME: ${{ steps.run-tests.outcome }}
+        REPORT_URL: ${{ steps.upload-report.outputs.artifact-url }}
+        REPORT_DIR: ${{ github.workspace }}/a11y-reports
+        RESULTS_FILE: ${{ runner.temp }}/a11y-results.json
+        CUSTOM_TEMPLATE_SUCCESS: ${{ inputs.comment-template-success }}
+        CUSTOM_TEMPLATE_FAILURE: ${{ inputs.comment-template-failure }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: node --experimental-strip-types "${{ github.action_path }}/runner/post-comment.ts"
+
+    - name: Fail if violations found
+      if: steps.run-tests.outcome == 'failure'
+      shell: bash
+      run: exit 1

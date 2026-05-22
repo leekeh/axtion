@@ -1,0 +1,17 @@
+{
+  "name": "action-a11y-check-runner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Internal Playwright + axe-core runner for the action-a11y-check GitHub Action",
+  "devDependencies": {
+    "@types/node": "^25.8.0"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "@playwright/test": "^1.60.0",
+    "axe-core": "^4.11.4",
+    "axe-html-reporter": "^2.2.11"
+  },
+  "packageManager": "pnpm@11.1.3"
+}
