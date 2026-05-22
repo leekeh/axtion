@@ -1,0 +1,49 @@
+name: Self-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      base-url:
+        description: "Base URL to run the accessibility check against"
+        default: "https://github.com"
+        required: true
+      routes:
+        description: "JSON array of routes to test"
+        default: '["/", "/login", "/about"]'
+        required: true
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required to post PR comments on same-repo PRs.
+      # For fork PRs, GitHub restricts this to read-only regardless — see below.
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run accessibility check
+        id: a11y
+        # The test URL may have existing violations; that means the action ran correctly,
+        # not that something is broken. Inspect the uploaded artifact to see the reports.
+        continue-on-error: true
+        uses: ./
+        with:
+          base-url: ${{ inputs.base-url || 'https://github.com' }}
+          routes: ${{ inputs.routes || '["/", "/login", "/about"]' }}
+          generate-report: "true"
+          # Post a PR comment on same-repo PRs only.
+          # Fork PRs run with a read-only token so posting would fail;
+          # we detect that case and disable the comment instead.
+          post-comment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && 'true' || 'false' }}
+
+      - name: Report outcome
+        run: |
+          echo "Outcome         : ${{ steps.a11y.outcome }}"
+          echo "Violations found: ${{ steps.a11y.outputs.violations-found }}"
