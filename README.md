@@ -1,12 +1,16 @@
-# Axtion
+# Axtion - Axe-core + Playwright wrapped in a GitHub Action
 
 Run [axe-core](https://github.com/dequelabs/axe-core#axe-core) accessibility tests against a running web app with [Playwright](https://playwright.dev/), and post results as a PR comment.
+
+## Why?
+
+On average, [57%](https://www.deque.com/automated-accessibility-coverage-report/) of accessibility issues can be detected with automated testing, and fixing them as early as possible saves time and effort. Use this action to quick-start your accessibility journey and catch regressions before they reach production. Add 4 lines to your testing workflow, and get a detailed report of accessibility violations with links to the exact failing elements and rules documentation.
 
 ## Quick start
 
 ```yaml
 # In your workflow — after your app is built and started:
-- uses: leekeh/axtion@v1
+- uses: leekeh/axtion@92dac76ca6d585203df89b544d037392c325f9d8 # v 0.0.1
   with:
     base-url: http://localhost:3000
     routes: '["/", "/about", "/products"]'
@@ -16,7 +20,7 @@ Run [axe-core](https://github.com/dequelabs/axe-core#axe-core) accessibility tes
 
 ```yaml
 permissions:
-  pull-requests: write # to post PR comments
+  pull-requests: write
   contents: read
 ```
 
@@ -50,20 +54,20 @@ These inputs let you restrict or expand which [axe-core rules](https://github.co
 
 ### Reporting & PR comments
 
-| Input                      | Default               | Description                                                                                         |
-| -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
-| `generate-report`          | `true`                | Generate HTML reports for violations and upload as GitHub Actions artifacts                         |
-| `post-comment`             | `true`                | Post/update a PR comment with results. Only runs on `pull_request` events.                          |
-| `github-token`             | `${{ github.token }}` | Token used for PR comments                                                                          |
-| `comment-template-success` | —                     | Path to a custom `.md` template for the success comment                                             |
-| `comment-template-failure` | —                     | Path to a custom `.md` template for the failure comment                                             |
+| Input                      | Default               | Description                                                                 |
+| -------------------------- | --------------------- | --------------------------------------------------------------------------- |
+| `generate-report`          | `true`                | Generate HTML reports for violations and upload as GitHub Actions artifacts |
+| `post-comment`             | `true`                | Post/update a PR comment with results. Only runs on `pull_request` events.  |
+| `github-token`             | `${{ github.token }}` | Token used for PR comments                                                  |
+| `comment-template-success` | —                     | Path to a custom `.md` template for the success comment                     |
+| `comment-template-failure` | —                     | Path to a custom `.md` template for the failure comment                     |
 
 ## Outputs
 
-| Output             | Description                                                                 |
-| ------------------ | --------------------------------------------------------------------------- |
-| `violations-found` | `"true"` if any violations were found                                       |
-| `report-url`       | URL to the uploaded artifact (empty if tests passed or reporting is off)    |
+| Output             | Description                                                              |
+| ------------------ | ------------------------------------------------------------------------ |
+| `violations-found` | `"true"` if any violations were found                                    |
+| `report-url`       | URL to the uploaded artifact (empty if tests passed or reporting is off) |
 
 ## Routes format
 
