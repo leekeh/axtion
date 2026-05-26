@@ -6,10 +6,26 @@ Run [axe-core](https://github.com/dequelabs/axe-core#axe-core) accessibility tes
 
 On average, [57%](https://www.deque.com/automated-accessibility-coverage-report/) of accessibility issues can be detected with automated testing, and fixing them as early as possible saves time and effort. Use this action to quick-start your accessibility journey and catch regressions before they reach production. Add 4 lines to your testing workflow, and get a detailed report of accessibility violations with links to the exact failing elements and rules documentation.
 
+## Requirements
+
+pnpm (≥ 9) must be available in the job before the action runs — the action's internal Playwright runner is a pnpm project. If your workflow doesn't already set it up:
+
+```yaml
+- uses: pnpm/action-setup@v6
+  with:
+    version: "11"
+```
+
+If your workflow already uses pnpm (e.g. to build your app), no extra step is needed.
+
 ## Quick start
 
 ```yaml
 # In your workflow — after your app is built and started:
+- uses: pnpm/action-setup@v6
+  with:
+    version: "11"
+
 - uses: leekeh/axtion@92dac76ca6d585203df89b544d037392c325f9d8 # v 0.0.1
   with:
     base-url: http://localhost:3000
