@@ -153,6 +153,7 @@ const playwrightFailed = (testResult.status ?? 1) !== 0;
 header("📊  Results");
 runTs("print-results.ts", [], {
   A11Y_PLAYWRIGHT_EXIT: String(testResult.status ?? 1),
+  A11Y_RESULTS_FILE:    resultsFile,
 });
 
 // ─── 4. Upload per-route HTML reports ─────────────────────────────────────────
