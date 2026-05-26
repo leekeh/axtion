@@ -16,13 +16,16 @@ On average, [57%](https://www.deque.com/automated-accessibility-coverage-report/
     routes: '["/", "/about", "/products"]'
 ```
 
-## Permissions required
+### Permissions required
 
 ```yaml
 permissions:
   pull-requests: write
   contents: read
 ```
+
+### Other requirements
+In the current iteration, a `package.json` with a `packagemanager` field pointing to a pnpm version is required. We are working on improving the ergonomics / flexibility of this part.
 
 ## Inputs
 
