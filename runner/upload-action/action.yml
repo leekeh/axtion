@@ -1,0 +1,5 @@
+name: "Upload A11y Reports (internal)"
+description: "Internal sub-action: uploads per-route HTML reports as separate unarchived artifacts so each can be viewed directly in the browser."
+runs:
+  using: "node24"
+  main: "upload.ts"
