@@ -47,3 +47,9 @@ jobs:
         run: |
           echo "Outcome         : ${{ steps.a11y.outcome }}"
           echo "Violations found: ${{ steps.a11y.outputs.violations-found }}"
+
+      - name: Fail on unexpected error
+        if: steps.a11y.outcome == 'failure' && steps.a11y.outputs.violations-found != 'true'
+        run: |
+          echo "::error::Accessibility check failed unexpectedly (no violations output set — likely an internal error)."
+          exit 1

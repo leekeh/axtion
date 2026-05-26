@@ -106,6 +106,8 @@ runs:
 
     - name: Set up pnpm
       uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      with:
+        package_json_file: ${{ github.action_path }}/runner/package.json
 
     - name: Install dependencies
       shell: bash
