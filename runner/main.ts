@@ -72,17 +72,7 @@ function header(msg: string): void {
   runTs("print-header.ts", [msg]);
 }
 
-// ─── 1. Install dependencies ─────────────────────────────────────────────────
-
-header("📦  Installing dependencies");
-
-// pnpm must be present in PATH — set it up with pnpm/action-setup before
-// calling this action. Using cwd: __dirname isolates the install from any
-// pnpm workspace or packageManager config in the consumer's repo root.
-execFileSync("pnpm", ["install", "--frozen-lockfile"], {
-  stdio: "inherit",
-  cwd: __dirname,
-});
+// ─── 1. Install Playwright browser ───────────────────────────────────────────
 
 // Validate browser choice before attempting the playwright install.
 const VALID_BROWSERS = ["chromium", "firefox", "webkit"] as const;
@@ -93,6 +83,7 @@ if (!(VALID_BROWSERS as readonly string[]).includes(browser)) {
   process.exit(1);
 }
 
+header("🎧  Installing Playwright browser");
 execFileSync("pnpm", ["exec", "playwright", "install", browser], {
   stdio: "inherit",
   cwd: __dirname,
