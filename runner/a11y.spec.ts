@@ -72,17 +72,15 @@ function getWaitUntil(
   fallback: WaitUntilStrategy,
 ): WaitUntilStrategy {
   if (!readiness) return fallback;
-  if (
-    readiness.type === "networkidle" ||
-    readiness.type === "load" ||
-    readiness.type === "domcontentloaded"
-  ) {
-    return readiness.type;
-  }
+  const type = readiness.type;
   // For selector/js strategies, navigate with "load" first, then apply the
   // custom wait. Don't combine with networkidle to avoid long timeouts on
   // apps that keep background polling active.
-  return "load";
+  if (type === "js" || type === "selector") {
+    return "load";
+  }
+ 
+  return type;
 }
 
 /**
@@ -116,11 +114,7 @@ async function applyReadiness(
       const timeout = readiness.timeout ?? 30_000;
       try {
         // Poll until the expression is truthy.
-        // Security note: this expression is evaluated by Playwright inside the browser
-        // page context — not in the Node.js runner process. It is sandboxed by the
-        // browser engine and has no access to the runner filesystem, environment
-        // variables, or secrets. The caller fully controls the routes manifest, so
-        // this is intentional and the risk is scoped to the browser sandbox.
+        // Expression is evaluated in the browser sandbox and has no access to the runner environment.
         await page.waitForFunction(readiness.expression, null, { timeout });
         // Then wait for the event loop to drain (hydration, deferred renders, etc.)
         await page.evaluate(

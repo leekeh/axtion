@@ -32,10 +32,10 @@ if (!rules.length) {
   process.exit(0);
 }
 
-const w = Math.max(...rules.map((r) => r.ruleId.length));
+const width = Math.max(...rules.map((r) => r.ruleId.length));
 for (const r of rules.toSorted((a, b) => a.ruleId.localeCompare(b.ruleId))) {
   console.log(
-    `  \x1b[1;35m\u00b7\x1b[0m ${r.ruleId.padEnd(w)}  ${r.description}`,
+    `  \x1b[1;35m\u00b7\x1b[0m ${r.ruleId.padEnd(width)}  ${r.description}`,
   );
 }
 console.log("");

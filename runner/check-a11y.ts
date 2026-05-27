@@ -5,23 +5,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 
 const generateReport = process.env.A11Y_GENERATE_REPORT !== "false";
 const reportDir = process.env.A11Y_REPORT_DIR ?? "a11y-reports";
-
-function parseJsonArray(envVar: string | undefined): string[] {
-  if (!envVar) return [];
-  try {
-    const parsed = JSON.parse(envVar);
-    if (Array.isArray(parsed))
-      return parsed.filter((x): x is string => typeof x === "string");
-  } catch {
-    // ignore malformed input
-  }
-  return [];
-}
-
-// Parse caller-supplied exclusions from env (JSON array of CSS selectors)
-const extraExclusions = parseJsonArray(process.env.A11Y_EXCLUSIONS ?? "[]");
-
-// Parse axe-core rule filtering options
+const exclusions = parseJsonArray(process.env.A11Y_EXCLUSIONS ?? "[]");
 const rules = parseJsonArray(process.env.A11Y_RULES);
 const rulesets = parseJsonArray(process.env.A11Y_RULESETS);
 const disabledRules = parseJsonArray(process.env.A11Y_DISABLED_RULES);
@@ -34,7 +18,7 @@ const disabledRules = parseJsonArray(process.env.A11Y_DISABLED_RULES);
 export async function checkA11y(page: Page, testName: string): Promise<void> {
   let builder = new AxeBuilder({ page });
 
-  for (const selector of extraExclusions) {
+  for (const selector of exclusions) {
     builder = builder.exclude([selector]);
   }
 
@@ -75,4 +59,17 @@ function toSafeName(name: string): string {
       .replace(/_{2,}/g, "_")
       .replace(/^_|_$/g, "") || "report"
   );
+}
+
+
+function parseJsonArray(envVar: string | undefined): string[] {
+  if (!envVar) return [];
+  try {
+    const parsed = JSON.parse(envVar);
+    if (Array.isArray(parsed))
+      return parsed.filter((x): x is string => typeof x === "string");
+  } catch {
+    // ignore malformed input
+  }
+  return [];
 }
