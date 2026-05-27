@@ -56,7 +56,7 @@ if (routes.length === 0) {
 function buildTestName(entry: RouteEntry): string {
   if (entry.name) return entry.name;
   const [pathPart, query] = entry.path.split("?");
-  let name = pathPart.replace(/^\//, "").replaceAll("/", " / ") || "home";
+  let name = pathPart.replace(/^\//, "").replaceAll("/", " / ") || "index";
   if (query) name += ` (${query})`;
   return name;
 }
