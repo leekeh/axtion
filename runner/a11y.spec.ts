@@ -6,18 +6,18 @@ import {
   type ReadinessStrategy,
   type WaitUntilStrategy,
 } from "./normalize-routes.ts";
-import * as fs from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 // ── Load routes manifest ─────────────────────────────────────────────────────
 
 const routesFile = process.env.ROUTES_FILE;
-if (!routesFile || !fs.existsSync(routesFile)) {
+if (!routesFile || !existsSync(routesFile)) {
   throw new Error(
     `ROUTES_FILE env var must point to a valid routes manifest. Got: ${routesFile}`,
   );
 }
 
-const rawManifest = JSON.parse(fs.readFileSync(routesFile, "utf-8"));
+const rawManifest = JSON.parse(readFileSync(routesFile, "utf-8"));
 const routes = normalizeRoutes(rawManifest);
 
 // ── Global default wait strategy ─────────────────────────────────────────────

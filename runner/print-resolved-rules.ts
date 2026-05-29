@@ -4,7 +4,7 @@
 import axe from "axe-core";
 import { styleText } from "node:util";
 
-const parseArr = (s: string | undefined): string[] | null => {
+function parseArr(s: string | undefined): string[] | null {
   if (!s) return null;
 
   try {
@@ -15,7 +15,7 @@ const parseArr = (s: string | undefined): string[] | null => {
   } catch {
     return null;
   }
-};
+}
 
 const withRules = parseArr(process.env.A11Y_RULES);
 const withTags = parseArr(process.env.A11Y_RULESETS);
