@@ -1,18 +1,18 @@
 /**
  * Prints the results of the accessibility tests to stdout.
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from "node:fs";
 
-const exitCode    = Number(process.env.A11Y_PLAYWRIGHT_EXIT ?? '0');
-const resultsFile = process.env.A11Y_RESULTS_FILE ?? '';
+const exitCode = Number(process.env.A11Y_PLAYWRIGHT_EXIT ?? "0");
+const resultsFile = process.env.A11Y_RESULTS_FILE ?? "";
 
 if (exitCode === 0) {
-  console.log('  \u2705  No accessibility issues detected\n\n');
+  console.log("  \u2705  No accessibility issues detected\n\n");
 } else {
-  console.log('  \u274c  The following tests failed:\n\n');
+  console.log("  \u274c  The following tests failed:\n\n");
   if (resultsFile && existsSync(resultsFile)) {
     try {
-      const data = JSON.parse(readFileSync(resultsFile, 'utf-8'));
+      const data = JSON.parse(readFileSync(resultsFile, "utf-8"));
       const lines: string[] = [];
 
       const walk = (suites: any[]) => {
@@ -21,8 +21,12 @@ if (exitCode === 0) {
           for (const spec of suite.specs ?? []) {
             for (const test of spec.tests ?? []) {
               for (const result of test.results ?? []) {
-                if (result.status === 'failed' || result.status === 'timedOut') {
-                  const suffix = result.status === 'timedOut' ? ' (timed out)' : '';
+                if (
+                  result.status === "failed" ||
+                  result.status === "timedOut"
+                ) {
+                  const suffix =
+                    result.status === "timedOut" ? " (timed out)" : "";
                   lines.push(`  \u00b7 ${spec.title}${suffix}`);
                 }
               }
@@ -37,5 +41,5 @@ if (exitCode === 0) {
       }
     } catch {}
   }
-  console.log('\n');
+  console.log("\n");
 }

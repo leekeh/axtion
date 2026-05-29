@@ -6,18 +6,18 @@ import {
   type ReadinessStrategy,
   type WaitUntilStrategy,
 } from "./normalize-routes.ts";
-import * as fs from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 // ── Load routes manifest ─────────────────────────────────────────────────────
 
 const routesFile = process.env.ROUTES_FILE;
-if (!routesFile || !fs.existsSync(routesFile)) {
+if (!routesFile || !existsSync(routesFile)) {
   throw new Error(
     `ROUTES_FILE env var must point to a valid routes manifest. Got: ${routesFile}`,
   );
 }
 
-const rawManifest = JSON.parse(fs.readFileSync(routesFile, "utf-8"));
+const rawManifest = JSON.parse(readFileSync(routesFile, "utf-8"));
 const routes = normalizeRoutes(rawManifest);
 
 // ── Global default wait strategy ─────────────────────────────────────────────
@@ -56,7 +56,7 @@ if (routes.length === 0) {
 function buildTestName(entry: RouteEntry): string {
   if (entry.name) return entry.name;
   const [pathPart, query] = entry.path.split("?");
-  let name = pathPart.replace(/^\//, "").replaceAll("/", " / ") || "home";
+  let name = pathPart.replace(/^\//, "").replaceAll("/", " / ") || "index";
   if (query) name += ` (${query})`;
   return name;
 }
@@ -72,17 +72,15 @@ function getWaitUntil(
   fallback: WaitUntilStrategy,
 ): WaitUntilStrategy {
   if (!readiness) return fallback;
-  if (
-    readiness.type === "networkidle" ||
-    readiness.type === "load" ||
-    readiness.type === "domcontentloaded"
-  ) {
-    return readiness.type;
-  }
+  const type = readiness.type;
   // For selector/js strategies, navigate with "load" first, then apply the
   // custom wait. Don't combine with networkidle to avoid long timeouts on
   // apps that keep background polling active.
-  return "load";
+  if (type === "js" || type === "selector") {
+    return "load";
+  }
+ 
+  return type;
 }
 
 /**
@@ -116,11 +114,7 @@ async function applyReadiness(
       const timeout = readiness.timeout ?? 30_000;
       try {
         // Poll until the expression is truthy.
-        // Security note: this expression is evaluated by Playwright inside the browser
-        // page context — not in the Node.js runner process. It is sandboxed by the
-        // browser engine and has no access to the runner filesystem, environment
-        // variables, or secrets. The caller fully controls the routes manifest, so
-        // this is intentional and the risk is scoped to the browser sandbox.
+        // Expression is evaluated in the browser sandbox and has no access to the runner environment.
         await page.waitForFunction(readiness.expression, null, { timeout });
         // Then wait for the event loop to drain (hydration, deferred renders, etc.)
         await page.evaluate(

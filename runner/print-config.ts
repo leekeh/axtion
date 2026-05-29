@@ -2,8 +2,9 @@
  * Print the configuration for the accessibility check.
  */
 import { readFileSync } from "node:fs";
+import { styleText } from "node:util";
 
-const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
+const bold = (s: string) => styleText("bold", s);
 const row = (label: string, value: string) =>
   console.log(`  ${bold(label.padEnd(14))}  ${value}`);
 
@@ -41,6 +42,6 @@ if (exclusions && exclusions !== "[]") row("Exclusions", exclusions);
 
 console.log("");
 for (const route of routes) {
-  console.log(`  \x1b[1;35m\u00b7\x1b[0m ${route}`);
+  console.log(`  ${styleText(["bold", "magenta"], "\u00b7")} ${route}`);
 }
 console.log("");
