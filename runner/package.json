@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@actions/artifact": "^6.2.0",
-    "@actions/core": "^1.11.1",
+    "@actions/core": "^3.0.1",
     "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "^1.60.0",
     "axe-core": "^4.11.4",
