@@ -94,6 +94,10 @@ outputs:
   report-url:
     description: "URL to the Actions run where artifacts are available (empty if generate-report is false or tests passed)"
 
+branding:
+  icon: flag
+  color: purple
+
 runs:
   using: "node24"
   main: "runner/boot.cjs"
